@@ -1,0 +1,38 @@
+# secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# jvm
+.gradle/
+build/
+out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+
+# node
+node_modules/
+web/dist/
+web/coverage/
+web/playwright-report/
+web/test-results/
+
+# infra
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/.terraform.lock.hcl
+*.kubeconfig
+
+# tooling
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.claude/settings.local.json
+
+# personal
+docs/INTERVIEW-NOTES.md
