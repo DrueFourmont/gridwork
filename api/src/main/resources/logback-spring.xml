@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging for the API.
+
+  prod  : one JSON object per line via logstash-logback-encoder, so CloudWatch
+          can index fields instead of regex matching a text blob.
+  local : plain text with the request id in the pattern, because a human is
+          reading it in a terminal.
+
+  Both carry requestId, put into the MDC by RequestIdFilter. Secrets are never
+  logged: nothing here reads the environment.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="gridwork-api"/>
+
+    <springProfile name="prod">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp>
+                        <timeZone>UTC</timeZone>
+                    </timestamp>
+                    <pattern>
+                        <pattern>
+                            {
+                              "app": "${appName}",
+                              "level": "%level",
+                              "logger": "%logger{40}",
+                              "thread": "%thread",
+                              "requestId": "%mdc{requestId:-}"
+                            }
+                        </pattern>
+                    </pattern>
+                    <message/>
+                    <stackTrace/>
+                </providers>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level [%mdc{requestId:-no-request-id}] %logger{36} : %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>

@@ -1,0 +1,9 @@
+-- Baseline migration. Deliberately creates nothing.
+--
+-- Flyway needs at least one migration in classpath:db/migration for the
+-- location to resolve, and running it creates the flyway_schema_history
+-- table. That is the whole point of this file: it proves the migration
+-- pipeline works before any schema exists to migrate.
+--
+-- Phase 1 adds V2__sheets_columns_rows_cells.sql. No table is defined in
+-- Phase 0, because Phase 0 writes no domain code.

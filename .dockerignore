@@ -1,0 +1,38 @@
+# One .dockerignore at the root, not one per module, because both Dockerfiles
+# run a Gradle build stage and therefore need the root build context:
+# settings.gradle.kts, gradle/, and domain/ all live here. Docker only reads
+# a .dockerignore from the context root, so a per module file would be dead.
+
+.git
+.gitignore
+.github
+
+# never let a real secrets file into an image layer
+.env
+.env.local
+.env.*.local
+*.pem
+
+# build output rebuilt inside the image anyway
+**/build/
+**/.gradle/
+.kotlin/
+
+# the web app is not part of the api or worker image
+web/node_modules/
+web/dist/
+web/coverage/
+web/playwright-report/
+web/test-results/
+
+docs/
+infra/
+*.md
+Makefile
+docker-compose.yml
+
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.claude/

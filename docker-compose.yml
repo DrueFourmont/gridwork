@@ -1,0 +1,97 @@
+# Local dependencies for Gridwork, plus the API itself.
+#
+# `make up` starts only postgres, redis, and localstack, so the API can run
+# from the IDE or from `make api` against them. `docker compose up -d` with no
+# service name starts the API container as well, which is what CI uses to give
+# Playwright something real to talk to.
+#
+# Credentials here are local only and deliberately boring. Real secrets come
+# from the environment, never from this file.
+
+name: gridwork
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gridwork
+      POSTGRES_USER: gridwork
+      POSTGRES_PASSWORD: gridwork
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready, not a TCP probe: the port opens before the server will
+      # accept queries, and depends_on would otherwise release too early.
+      test: ["CMD-SHELL", "pg_isready -U gridwork -d gridwork"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      # SQS only. Every other service stays off so the container starts fast
+      # and cannot be leaned on for something the plan does not include.
+      SERVICES: sqs
+      DEBUG: "0"
+      AWS_DEFAULT_REGION: us-west-2
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health | grep -q '\"sqs\": \"available\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  api:
+    build:
+      # Context is the repo root, not api/, because the Gradle build stage
+      # needs settings.gradle.kts, gradle/, and domain/.
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # Service names, not localhost: inside the compose network the database
+      # is reachable as "postgres", not as the host loopback.
+      DATABASE_URL: jdbc:postgresql://postgres:5432/gridwork
+      DATABASE_USER: gridwork
+      DATABASE_PASSWORD: gridwork
+      REDIS_URL: redis://redis:6379
+      SQS_ENDPOINT: http://localstack:4566
+      AWS_REGION: us-west-2
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 45s
+    # SIGTERM, then time for in flight requests to finish. Matches
+    # server.shutdown=graceful and the 25s phase timeout in application.yml.
+    stop_grace_period: 30s
+
+volumes:
+  postgres-data:

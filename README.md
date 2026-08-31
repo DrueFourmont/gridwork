@@ -18,7 +18,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 
 | Phase | What | State |
 |---|---|---|
-| 0 | Scaffold: Gradle multi-project, Vite app, compose, CI | in progress |
+| 0 | Scaffold: Gradle multi-project, Vite app, compose, CI | done |
 | 1 | REST API: versioned cells, idempotency keys, cursor pagination, OpenAPI | not started |
 | 2 | Grid UI: virtualised, optimistic edits, conflict handling | not started |
 | 3 | Real-time: WebSockets, Redis fan-out across two replicas, replay | not started |

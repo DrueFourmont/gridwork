@@ -1,0 +1,124 @@
+# Gridwork API configuration.
+#
+# Every secret and every environment specific value is read from an
+# environment variable. Nothing sensitive is written here, and nothing
+# sensitive is logged. Variable names match .env.example exactly.
+#
+# Two profiles:
+#   local  defaults that point at docker compose, human readable logs
+#   prod   no defaults at all, so a missing variable fails at startup
+#          rather than silently connecting somewhere unintended
+
+spring:
+  application:
+    name: gridwork-api
+
+  # Graceful shutdown: on SIGTERM the server stops accepting new connections
+  # and lets in flight requests finish before the JVM exits. Kubernetes sends
+  # SIGTERM before it kills a pod, so this is what makes a rolling deploy
+  # zero downtime rather than a burst of dropped requests.
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      pool-name: gridwork-pool
+      maximum-pool-size: 10
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. Hibernate never alters it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 100
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+server:
+  port: 8080
+  shutdown: graceful
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Nothing beyond these three. env, beans, and heapdump stay closed.
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        # Splits health into two groups Kubernetes understands.
+        # liveness  : is the JVM wedged, restart the pod
+        # readiness : can this pod take traffic right now, pull it from the
+        #             load balancer if not, but do not restart it
+        enabled: true
+      show-details: when-authorized
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          # Redis joins this group in Phase 3, when the fan-out lands and
+          # spring-boot-starter-data-redis is actually on the classpath.
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  metrics:
+    tags:
+      application: gridwork-api
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+gridwork:
+  version: 0.1.0-SNAPSHOT
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gridwork}
+    username: ${DATABASE_USER:gridwork}
+    password: ${DATABASE_PASSWORD:gridwork}
+
+management:
+  endpoint:
+    health:
+      # Local only. Lets curl see which components are down without auth.
+      show-details: always
+
+logging:
+  level:
+    com.dfsystems.gridwork: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# No defaults in prod on purpose. If DATABASE_URL is unset the application
+# refuses to start instead of falling back to something local.
+
+logging:
+  level:
+    root: INFO

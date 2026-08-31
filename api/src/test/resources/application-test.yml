@@ -1,0 +1,12 @@
+# Test profile. The datasource points at a Testcontainers Postgres, injected
+# at runtime by @DynamicPropertySource, so nothing here hardcodes a host.
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: WARN
+    com.dfsystems.gridwork: INFO

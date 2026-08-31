@@ -1,0 +1,22 @@
+# Gridwork automation worker.
+#
+# Not a web application: there is no HTTP port and no servlet container. It
+# pulls from SQS. Every value comes from an environment variable, matching
+# .env.example.
+
+spring:
+  application:
+    name: gridwork-worker
+  main:
+    web-application-type: none
+
+gridwork:
+  sqs:
+    endpoint: ${SQS_ENDPOINT:}
+    queue-url: ${SQS_QUEUE_URL:}
+    region: ${AWS_REGION:us-west-2}
+
+logging:
+  level:
+    root: INFO
+    com.dfsystems.gridwork: INFO
