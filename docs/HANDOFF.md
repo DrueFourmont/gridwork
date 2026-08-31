@@ -99,9 +99,23 @@ scalar and GitHub could not parse the file. `make test` now runs `actionlint`
 first, because a workflow that does not parse is the one failure CI cannot
 report on itself.
 
-**Note:** the Phase 1 commits have not been through CI yet at the time of
-writing. The full suite is green locally on a cold build. Treat CI green for
-Phase 1 as unconfirmed until the run finishes.
+Phase 1: run 33369282330 on commit `e72111c`, all three jobs green. jvm 135s,
+web 23s, playwright smoke 201s.
+
+## Budgets measured this phase
+
+| Budget | Limit | Phase 0 | Phase 1 | Verdict |
+|---|---|---|---|---|
+| api Docker image | 300 MB | 287.8 MB | 289.5 MB | under, margin now 10.5 MB |
+| worker Docker image | 300 MB | 244.2 MB | unchanged | under |
+| web bundle, brotli | 250 kB | 68.0 kB | unchanged | under, web untouched this phase |
+
+The api image grew 1.7 MB, from adding
+`spring-boot-starter-oauth2-resource-server`. That is a small change and a
+worrying trend line: the margin is now under 4 percent of the budget and there
+are five phases left. The fix when it comes will be a jlink runtime rather than
+a full JRE, which is a bigger change than it sounds and should not be attempted
+in a hurry. Watch this number every phase.
 
 ## Not verified by anyone
 
@@ -144,3 +158,10 @@ Worth revisiting when the load test in Phase 4 gives a number to beat.
 189s against 130s for jvm and 24s for web. Tolerable now.
 
 **7. Local Node is 26, CI Node is 22.**
+
+**8. The compose stack runs with a committed JWT secret.** It is in
+`docker-compose.yml` in plain text and named
+`local-compose-only-secret-not-for-any-real-use`. That is correct for a local
+stack and would be a serious problem anywhere else. Phase 6 supplies the real
+one from AWS Secrets Manager and nothing about this file should be copied into
+that path.

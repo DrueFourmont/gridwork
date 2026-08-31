@@ -74,6 +74,10 @@ services:
       REDIS_URL: redis://redis:6379
       SQS_ENDPOINT: http://localstack:4566
       AWS_REGION: us-west-2
+      # Local only, and obviously so. Passed explicitly rather than leaning on
+      # the local profile's default, so this file shows how a real deployment
+      # supplies it: from the environment, never from the image.
+      JWT_SECRET: local-compose-only-secret-not-for-any-real-use
     ports:
       - "8080:8080"
     depends_on:
