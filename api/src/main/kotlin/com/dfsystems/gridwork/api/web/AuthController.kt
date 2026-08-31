@@ -8,6 +8,7 @@ import com.dfsystems.gridwork.api.web.dto.RegisterResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController(private val auth: AuthService) {
 
     @PostMapping("/register")
+    @SecurityRequirements
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create an account.")
     @ApiResponses(
@@ -39,6 +41,7 @@ class AuthController(private val auth: AuthService) {
     }
 
     @PostMapping("/login")
+    @SecurityRequirements
     @Operation(
         summary = "Exchange email and password for a short lived bearer token.",
         description = "There is no refresh token. When the token expires, log in again.",

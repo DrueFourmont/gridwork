@@ -70,6 +70,7 @@ from scratch. Full request and response output is in the Phase 1 report.
 | Type validation runs against the column's type | `31/12/2026` into a DATE column returned 422 naming `updates[0].value` and `NOT_A_DATE` |
 | Cursor pagination walks 25 rows in pages of 10 | pages of 10, 10, 5 with a null cursor on the last, 25 rows total, no repeats |
 | Swagger UI loads and lists every endpoint | screenshotted in Drue's Chrome at `http://localhost:8080/swagger-ui.html` |
+| Swagger UI can actually authenticate | Authorize button present, bearerAuth scheme in the document, padlocks on protected operations, register and login exempt |
 
 ## Verified in a real browser
 

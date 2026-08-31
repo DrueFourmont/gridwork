@@ -63,6 +63,28 @@ class ActuatorHealthIT : ApiIntegrationTest() {
     }
 
     @Test
+    fun `the openapi document tells a reader how to authenticate`() {
+        // Without this the document is technically complete and practically
+        // useless: Swagger UI shows no Authorize button, so every protected
+        // endpoint answers 401 the moment someone presses Try it out.
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
+            .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+            // Applied globally, so a new endpoint is protected in the document
+            // by default rather than by remembering to annotate it.
+            .andExpect(jsonPath("$.security[0].bearerAuth").exists())
+    }
+
+    @Test
+    fun `login and register do not ask for a token they exist to issue`() {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.paths['/api/v1/auth/login'].post.security").isEmpty)
+            .andExpect(jsonPath("$.paths['/api/v1/auth/register'].post.security").isEmpty)
+    }
+
+    @Test
     fun `every phase 1 endpoint appears in the openapi document`() {
         // Swagger UI up, with the real contract in it, is one of this phase's
         // done-when criteria. An endpoint missing from the document is an
