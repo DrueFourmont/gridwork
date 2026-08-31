@@ -102,7 +102,11 @@ jobs:
         run: docker compose up -d --wait
 
       - name: show api health
-        run: curl -isS -H 'X-Request-Id: ci-smoke' http://localhost:8080/actuator/health
+        # Block scalar, not a plain one. "X-Request-Id: ci-smoke" contains a
+        # colon followed by a space, which YAML reads as a nested mapping in a
+        # plain scalar and makes the whole workflow file unparseable.
+        run: |
+          curl -isS -H 'X-Request-Id: ci-smoke' http://localhost:8080/actuator/health
 
       - name: run the smoke test
         # playwright.config.ts starts `vite preview` itself, so this exercises
