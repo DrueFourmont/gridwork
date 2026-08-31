@@ -18,6 +18,13 @@ Pinned versions: Gradle 8.14.5, Kotlin 2.4.10, Spring Boot 3.5.16, JDK 21,
 Node 22 in CI, React 18, Vite 8, TypeScript 6. All JVM versions live in
 `gradle/libs.versions.toml`.
 
+CI took two attempts. Run 33358881662 failed in zero seconds with no step log:
+`ci.yml` had `run: curl -isS -H 'X-Request-Id: ci-smoke' ...` as a plain YAML
+scalar, and a plain scalar ends at a colon followed by a space, so GitHub could
+not parse the file and scheduled nothing. Fixed with a block scalar in
+`cd81a77`. `make test` now runs `actionlint` first, because a workflow that
+does not parse is the one failure CI cannot report on itself.
+
 ## Verified by whom
 
 **Verified by Drue in a browser.** Nothing yet. Phase 0 was run entirely
@@ -72,6 +79,9 @@ zero skipped. `./gradlew clean build --no-build-cache --rerun-tasks` is green.
 | `make web` serves on 5173 and proxies to the api | curl returned the app shell with `<title>Gridwork</title>`, and `/api/actuator/health` through the proxy returned UP and echoed `dev-proxy-check` |
 | `make test` runs the jvm build and the web checks | ran green, output in the Phase 0 report |
 | `make down` removes containers, network, and volumes | `docker compose ps` returned an empty table afterwards |
+| CI is green on GitHub | run 33361552735 on commit `cd81a77`: jvm 130s success, web 24s success, playwright smoke 189s success |
+| CI reaches a real API and the request id survives the round trip | the "show api health" step logged `HTTP/1.1 200` and `X-Request-Id: ci-smoke` |
+| `make lint-ci` catches workflow yaml GitHub would reject | reintroduced the exact bug from run 33358881662, `make test` stopped on it before the gradle build |
 
 **Budgets measured this phase.**
 
@@ -89,8 +99,6 @@ reason.
 
 **Not verified by anyone.**
 
-- The GitHub Actions workflow has never run. It is written but unproven until
-  the first push. Treat CI green as a Phase 0 claim that is still open.
 - The worker has never consumed a message. It boots, and that is all that was
   claimed.
 - LocalStack reports SQS available but no queue has been created and nothing
@@ -133,9 +141,11 @@ something that reflects whether the worker is actually polling, most likely a
 last-poll timestamp behind a small actuator surface.
 
 **4. The e2e CI job rebuilds the api image from scratch on every run.** It has
-no Docker layer cache, so it will be the slowest job by a wide margin. If it
-becomes annoying, wire up buildx with the GitHub Actions cache backend, or
-build the jar in the `jvm` job and ship it to a runtime-only Dockerfile stage.
+no Docker layer cache, so it is the slowest job: 189s against 130s for jvm and
+24s for web. That is tolerable now and will not stay tolerable as the API
+grows. When it stops being acceptable, wire up buildx with the GitHub Actions
+cache backend, or build the jar in the `jvm` job and ship it to a runtime-only
+Dockerfile stage.
 
 **5. Local Node is 26, CI Node is 22.** README says Node 22 and CI matches it.
 The local machine runs 26 and the build works there too, but the two are not

@@ -76,7 +76,13 @@ does not already teach. Scope is a feature.
 make up        # postgres, redis, localstack
 make api       # spring boot on :8080
 make web       # vite on :5173
-make test
+make test      # workflow lint, jvm build and tests, web checks
+make down
 ```
 
-Requires JDK 21, Node 22, Docker.
+Requires JDK 21, Node 22, Docker, and actionlint (`brew install actionlint`).
+
+`make test` lints `.github/workflows/` first. A workflow file that does not
+parse is rejected by GitHub before any job is scheduled, which produces a
+failed run with no step log, so CI cannot catch that about itself. That check
+has to happen here.
