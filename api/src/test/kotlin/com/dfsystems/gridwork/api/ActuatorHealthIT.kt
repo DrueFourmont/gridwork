@@ -1,39 +1,23 @@
 package com.dfsystems.gridwork.api
 
+import com.dfsystems.gridwork.api.support.ApiIntegrationTest
 import com.dfsystems.gridwork.api.web.RequestIdFilter
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 
 /**
- * Boots the whole application against a real Postgres in a container, so this
- * proves the things a mock cannot: the datasource resolves, Flyway runs the
- * baseline migration, Hibernate validates against the migrated schema, the
- * security chain lets the health check through, and the actuator readiness
- * and liveness groups exist.
+ * Boots the whole application against a real Postgres: the datasource
+ * resolves, Flyway runs every migration, Hibernate validates against the
+ * migrated schema, the security chain lets the probes through, and the
+ * actuator groups exist.
  *
- * Requires Docker. GitHub runners have it.
+ * Shares the container and the profile with the rest of the API tests, rather
+ * than starting a second Postgres of its own.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Testcontainers
-class ActuatorHealthIT {
-
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+class ActuatorHealthIT : ApiIntegrationTest() {
 
     @Test
     fun `health reports UP`() {
@@ -78,17 +62,20 @@ class ActuatorHealthIT {
             .andExpect(jsonPath("$.info.title").value("Gridwork API"))
     }
 
-    companion object {
-        @Container
-        @JvmStatic
-        val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
-
-        @DynamicPropertySource
-        @JvmStatic
-        fun datasourceProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
-        }
+    @Test
+    fun `every phase 1 endpoint appears in the openapi document`() {
+        // Swagger UI up, with the real contract in it, is one of this phase's
+        // done-when criteria. An endpoint missing from the document is an
+        // endpoint nobody can discover.
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.paths['/api/v1/auth/register']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/auth/login']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/sheets']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/sheets/{sheetId}']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/sheets/{sheetId}/members']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/sheets/{sheetId}/columns']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/sheets/{sheetId}/rows']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/sheets/{sheetId}/cells:batchUpdate']").exists())
     }
 }

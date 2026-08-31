@@ -1,6 +1,14 @@
 # Test profile. The datasource points at a Testcontainers Postgres, injected
 # at runtime by @DynamicPropertySource, so nothing here hardcodes a host.
 
+gridwork:
+  jwt:
+    # Test only, and obviously so. The application refuses to start with a
+    # secret shorter than 32 bytes, which is why this one is long.
+    secret: test-secret-that-is-definitely-long-enough-for-hs256
+    issuer: gridwork
+    ttl: 15m
+
 management:
   endpoint:
     health:

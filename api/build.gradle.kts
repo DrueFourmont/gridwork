@@ -12,6 +12,9 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.security)
+    // Validates our own HS256 tokens. This is not OAuth login, which the scope
+    // guardrails forbid, it is the token validation machinery. See ADR 0004.
+    implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
     implementation(libs.flyway.core)

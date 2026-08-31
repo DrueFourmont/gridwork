@@ -89,6 +89,15 @@ springdoc:
 
 gridwork:
   version: 0.1.0-SNAPSHOT
+  jwt:
+    # The secret is never written here. It comes from the environment, and the
+    # application refuses to start if it is shorter than 32 bytes, because
+    # HS256 with a short key is a weakness that never announces itself.
+    secret: ${JWT_SECRET}
+    issuer: gridwork
+    # Short lived on purpose. There is no refresh token and no revocation list,
+    # so the expiry is the only thing that limits the damage of a leaked token.
+    ttl: 15m
 
 ---
 spring:
@@ -99,6 +108,13 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gridwork}
     username: ${DATABASE_USER:gridwork}
     password: ${DATABASE_PASSWORD:gridwork}
+
+gridwork:
+  jwt:
+    # A visible, obviously fake development default so `make api` runs with no
+    # .env file. Any real deployment sets JWT_SECRET. The prod profile has no
+    # default at all, so a missing secret there fails at startup.
+    secret: ${JWT_SECRET:local-development-only-secret-not-for-any-real-use}
 
 management:
   endpoint:
