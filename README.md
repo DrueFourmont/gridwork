@@ -19,7 +19,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 | Phase | What | State |
 |---|---|---|
 | 0 | Scaffold: Gradle multi-project, Vite app, compose, CI | done |
-| 1 | REST API: versioned cells, idempotency keys, cursor pagination, OpenAPI | not started |
+| 1 | REST API: versioned cells, idempotency keys, cursor pagination, OpenAPI | done |
 | 2 | Grid UI: virtualised, optimistic edits, conflict handling | not started |
 | 3 | Real-time: WebSockets, Redis fan-out across two replicas, replay | not started |
 | 4 | Automations: outbox relay, SQS, idempotent worker, DLQ, loop stop, load test | not started |
@@ -30,7 +30,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 ## Links
 
 - Live app: not yet deployed
-- API docs (Swagger UI): not yet deployed
+- API docs (Swagger UI): `http://localhost:8080/swagger-ui.html` when running locally, not yet deployed
 - Architecture: `docs/architecture.svg` (Phase 6)
 - Walkthrough video: Phase 7
 - Plan: `docs/PLAN-SUMMARY.md`
