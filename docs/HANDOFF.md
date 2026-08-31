@@ -27,10 +27,28 @@ does not parse is the one failure CI cannot report on itself.
 
 ## Verified by whom
 
-**Verified by Drue in a browser.** Nothing yet. Phase 0 was run entirely
-through the command line and a headless Chromium. Nobody has opened
-`http://localhost:5173` by hand and looked at it. Worth two minutes before
-Phase 1 starts: `make up`, `make api`, `make web`.
+**Verified in a real browser, on Drue's machine, on his Chrome.** Not headless
+Chromium this time. The page was opened at `http://localhost:5173` and
+screenshotted in three states:
+
+| State | What the page showed | How the state was forced |
+|---|---|---|
+| API up | `Gridwork` and `api: UP` | normal `make api` |
+| API down | `Gridwork` and `api: unreachable` | `lsof -ti:8080 \| xargs kill` |
+| API recovered | `Gridwork` and `api: UP` again | `make api` restarted |
+
+The middle row is the one that matters. A screenshot of the healthy page alone
+would not distinguish a live health check from a hardcoded string. Forcing the
+failure and watching the page change proves the call is real.
+
+Also confirmed in the same session: the browser issued
+`GET http://localhost:5173/api/actuator/health` and got `200`, so the Vite
+proxy is doing its job, and the console had zero errors and zero warnings.
+
+Still not verified by a human: nobody has judged whether the page *looks*
+right, only that it says the right words. For a page this bare that is a thin
+distinction, and it stops being thin in Phase 2 when there is a grid to look
+at.
 
 **Verified by test.**
 
@@ -106,8 +124,6 @@ reason.
 - Redis is running and healthy but the API does not connect to it. There is no
   Redis dependency on the api classpath yet.
 - Nothing has been deployed anywhere. There is no AWS account activity.
-- No human has looked at the rendered page. Chromium asserted the text, which
-  is not the same as someone seeing that it is not broken.
 
 ## Known issues
 
