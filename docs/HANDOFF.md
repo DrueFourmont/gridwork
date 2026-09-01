@@ -4,6 +4,10 @@ State of Gridwork at the end of each phase. Updated by the phase that changed it
 
 ## Current state
 
+Phase 3 is done. Two API replicas now share live updates through Redis pub/sub,
+browsers hold a websocket per open sheet, and a client that was disconnected
+catches up by replaying `cell_history` rather than refetching the sheet.
+
 Phase 2 is done. The web app now has a login screen, a sheet list, and a
 virtualised grid with optimistic cell editing and a conflict merge prompt. It
 is the first phase where the front end uses the API at all.
@@ -40,6 +44,13 @@ web unit tests, 9 Playwright tests, 0 failures.**
 | `conflict.spec.ts` | 2 | real second writer produces a merge prompt; keep mine retries and wins |
 | `performance.spec.ts` | 1 | frame timing plus the DOM stays small |
 | `smoke.spec.ts` | 3 | app loads, proxy reaches the api, bad path is not a 500 |
+| `ReplayRuleTest` | 10 | no cursor, cursor from the future, at and past the replay limit |
+| `TwoReplicaRealtimeIT` | 4 | cross replica delivery, replay on reconnect, bad token, no access |
+| `liveConnection.test.ts` | 10 | first frame auth, cursor tracking, backoff, resync, unknown frames |
+| `realtime.spec.ts` | 3 | two browsers see each other, echo is a no op, replay after a real drop |
+
+Phase 3 totals: **111 JVM tests, 43 web unit tests, 12 Playwright tests, 0
+failures.**
 
 Three worth naming:
 
@@ -50,6 +61,11 @@ Three worth naming:
 - **`keeping mine retries at the version the server reported and wins`** proves
   the client adopts `actualVersion` from a 409. Without it, resolving a
   conflict would conflict again forever.
+- **`a write on replica one reaches a client connected to replica two`** starts
+  a second, entirely separate Spring context on its own port, sharing only
+  Postgres and Redis. A single context would pass with Redis removed
+  altogether, because publisher and subscriber would be the same object in the
+  same JVM, and the whole claim is that they are not.
 
 
 93 tests, 0 failures, 0 errors, 0 skipped, on a cold
@@ -108,6 +124,14 @@ Drue's own Chrome and screenshotted. All four tag groups render with all nine
 operations, and the `PATCH /api/v1/sheets/{sheetId}/cells:batchUpdate` path
 appears with its summary.
 
+Phase 3: the two replica clip, in `docs/clips/`. Two browsers on two Vite
+servers proxying to two different API containers, 8080 and 8081, sharing only
+Postgres and Redis. `replica-one-writes.webm` shows the typing;
+`replica-two-receives.webm` shows the text appearing in a browser that never
+reloaded, with the live indicator green. A frame was extracted from the second
+clip and inspected to confirm it shows "typed on replica one" rather than just
+being a file of the right size.
+
 Phase 2: the grid itself, opened on the 2,000 row seeded sheet in Drue's own
 Chrome and screenshotted in three states.
 
@@ -151,7 +175,7 @@ web 23s, playwright smoke 201s.
 |---|---|---|---|---|---|
 | api Docker image | 300 MB | 287.8 MB | 289.5 MB | unchanged | under, margin 10.5 MB |
 | worker Docker image | 300 MB | 244.2 MB | unchanged | unchanged | under |
-| web bundle, brotli | 250 kB | 68.0 kB | unchanged | 82.4 kB | under, 32 percent of budget |
+| web bundle, brotli | 250 kB | 68.0 kB | unchanged | 82.4 kB | under, 32.8 percent at Phase 3 (83.9 kB) |
 | Grid scroll, 2,000 rows | 60 fps | not tested | not tested | 0 frames over budget | met |
 
 **The 60 fps measurement, in full**, taken in a real Chromium over the
@@ -184,13 +208,15 @@ in a hurry. Watch this number every phase.
 
 ## Not verified by anyone
 
-- No load test has been run. The `PATCH cells:batchUpdate` p95 budget of 200 ms
-  at 50 VUs is unmeasured. Phase 4 brings k6.
 - Nobody has used the grid for real work. It has been driven by tests and by
   two scripted browser sessions, which is not the same as someone trying to get
   something done in it and finding out what is missing.
 - The worker still consumes nothing. No SQS queue exists.
-- Redis is running and healthy and the API still does not connect to it.
+- Nothing has been tested with more than two replicas, and nothing has run for
+  longer than a few minutes. Socket churn, memory growth in the subscription
+  map, and Redis reconnection after an outage are all unobserved.
+- No load test. The `PATCH cells:batchUpdate` p95 budget of 200 ms at 50 VUs is
+  unmeasured, and so is what live fan-out costs it. Phase 4 brings k6.
 - Nothing is deployed anywhere.
 
 ## Known issues
@@ -253,6 +279,35 @@ on a shared CI runner is noisy and a flaky performance gate teaches people to
 ignore red builds. The real number is measured locally and recorded above. If
 that trade is wrong, the fix is a dedicated perf run, not a tighter threshold
 on a noisy runner.
+
+**15. Live updates make conflicts rare, so the 409 path is now the degraded
+path.** A connected browser usually receives the other person's change before
+the user types, so there is nothing to conflict with. The conflict e2e tests
+now suppress the websocket on purpose to reproduce a conflict at all. That is
+the feature working, but it means the most interesting code in the project is
+no longer exercised by simply using the app, and it has to keep being tested
+deliberately. See ADR 0007.
+
+**16. Websocket origins are an allow list, not CORS.** A websocket handshake is
+not covered by CORS, so nothing in the browser stops a page on any origin from
+opening one. `gridwork.websocket.allowed-origins` is the only control, it has
+no default in the prod profile, and getting it wrong silently accepts sockets
+from anywhere.
+
+**17. The subscription map is per replica and in memory, and nothing prunes it
+under churn.** Sessions are removed on close, but a replica that has been up
+for a long time with many short lived connections has not been observed. There
+is no metric on socket count or subscription count yet.
+
+**18. There is no presence.** You cannot see who else is viewing a sheet or
+where their cursor is. `PLAN-SUMMARY.md` lists presence as a use for Redis, but
+Phase 3's stated scope is fan-out and replay, so it was left out rather than
+quietly added.
+
+**19. The clip is committed as two 80 kB webm files.** They are build output in
+a git repo, which is normally wrong. Kept because "clip recorded" is a Phase 3
+deliverable and a link to a file that only exists on one laptop is not a
+deliverable. Worth revisiting in Phase 7 when the Loom exists.
 
 **14. React Compiler cannot memoise the Grid component.** `useVirtualizer`
 returns fresh function identities each render, so the compiler skips the whole
