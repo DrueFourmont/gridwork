@@ -4,6 +4,10 @@ State of Gridwork at the end of each phase. Updated by the phase that changed it
 
 ## Current state
 
+Phase 2 is done. The web app now has a login screen, a sheet list, and a
+virtualised grid with optimistic cell editing and a conflict merge prompt. It
+is the first phase where the front end uses the API at all.
+
 Phase 1 is done. The API has authentication, sheets with members, typed
 columns, rows, and the versioned batch cell write that ADR 0001 is about.
 Errors are RFC 7807 throughout. Unsafe requests accept an idempotency key.
@@ -22,6 +26,31 @@ Pinned versions unchanged from Phase 0, plus
 `spring-boot-starter-oauth2-resource-server` for JWT validation (ADR 0004).
 
 ## Verified by test
+
+Phase 2 adds 33 web tests on top of the JVM suite. Totals: **97 JVM tests, 33
+web unit tests, 9 Playwright tests, 0 failures.**
+
+| Suite | Tests | What it covers |
+|---|---|---|
+| `writeQueue.test.ts` | 10 | coalescing, serialising, version learning, conflict adoption, rollback |
+| `client.test.ts` | 8 | bearer token, 409 to ConflictError, 401 sign out, non JSON error bodies, schema rejection |
+| `Grid.test.tsx` | 8 | only a window of rows in the DOM, editing, escape, clearing to null, read only |
+| `ConflictDialog.test.tsx` | 7 | both values shown, resolution callbacks, empty values, alertdialog role |
+| `grid.spec.ts` | 3 | edit persists across a reload, invalid value rolls back, sign out |
+| `conflict.spec.ts` | 2 | real second writer produces a merge prompt; keep mine retries and wins |
+| `performance.spec.ts` | 1 | frame timing plus the DOM stays small |
+| `smoke.spec.ts` | 3 | app loads, proxy reaches the api, bad path is not a 500 |
+
+Three worth naming:
+
+- **`holds a second edit until the in flight request settles`** is the test for
+  the subtle bug in ADR 0006: an edit racing an earlier edit of its own.
+- **`renders only a window of rows, not all of them`** is the load bearing
+  assertion for the 60 fps budget, and it needs no frame counter.
+- **`keeping mine retries at the version the server reported and wins`** proves
+  the client adopts `actualVersion` from a 409. Without it, resolving a
+  conflict would conflict again forever.
+
 
 93 tests, 0 failures, 0 errors, 0 skipped, on a cold
 `./gradlew clean build --no-build-cache --rerun-tasks`.
@@ -79,6 +108,19 @@ Drue's own Chrome and screenshotted. All four tag groups render with all nine
 operations, and the `PATCH /api/v1/sheets/{sheetId}/cells:batchUpdate` path
 appears with its summary.
 
+Phase 2: the grid itself, opened on the 2,000 row seeded sheet in Drue's own
+Chrome and screenshotted in three states.
+
+| State | What the page showed | How it was produced |
+|---|---|---|
+| Loaded | 2,000 rows, 5 typed columns, 45 rows in the DOM, 64,000 px scroll height | `make seed` then open the sheet |
+| Edited | cell went to "edited in Drue's Chrome", `data-version` 1 to 2 | double click, type, Enter |
+| Conflicted | merge dialog with both values and "Nothing was overwritten" | a separate API call took the cell to version 3 first |
+
+The third row is the one that matters, and it is the same method as Phase 0: a
+screenshot of a working grid proves far less than a screenshot of the grid
+correctly refusing to overwrite someone.
+
 Phase 0: the app page at `http://localhost:5173`, screenshotted in three
 states.
 
@@ -105,11 +147,33 @@ web 23s, playwright smoke 201s.
 
 ## Budgets measured this phase
 
-| Budget | Limit | Phase 0 | Phase 1 | Verdict |
-|---|---|---|---|---|
-| api Docker image | 300 MB | 287.8 MB | 289.5 MB | under, margin now 10.5 MB |
-| worker Docker image | 300 MB | 244.2 MB | unchanged | under |
-| web bundle, brotli | 250 kB | 68.0 kB | unchanged | under, web untouched this phase |
+| Budget | Limit | Phase 0 | Phase 1 | Phase 2 | Verdict |
+|---|---|---|---|---|---|
+| api Docker image | 300 MB | 287.8 MB | 289.5 MB | unchanged | under, margin 10.5 MB |
+| worker Docker image | 300 MB | 244.2 MB | unchanged | unchanged | under |
+| web bundle, brotli | 250 kB | 68.0 kB | unchanged | 82.4 kB | under, 32 percent of budget |
+| Grid scroll, 2,000 rows | 60 fps | not tested | not tested | 0 frames over budget | met |
+
+**The 60 fps measurement, in full**, taken in a real Chromium over the
+`make seed` fixture, scrolling the whole 64,000 pixel height:
+
+```
+scrollHeightPx     64000
+framesSampled      299
+medianMs           8.3
+p95Ms              9.2
+p99Ms              10.2
+worstMs            10.6
+framesOverBudget   0        (over 16.7 ms)
+rowsInDom          37       (of 2000)
+cellsInDom         185      (of 10000)
+```
+
+Read the median honestly: 8.3 ms is one frame at 120 Hz, which is this
+machine's refresh rate. The grid is keeping up with the display rather than
+being limited by anything in the code. On a 60 Hz screen the median would be
+16.7 ms and the budget would still be met, but this number should not be quoted
+as "120 fps of headroom".
 
 The api image grew 1.7 MB, from adding
 `spring-boot-starter-oauth2-resource-server`. That is a small change and a
@@ -120,12 +184,11 @@ in a hurry. Watch this number every phase.
 
 ## Not verified by anyone
 
-- The web app does not use any of the Phase 1 API. It still calls only
-  `/actuator/health`. The grid is Phase 2.
 - No load test has been run. The `PATCH cells:batchUpdate` p95 budget of 200 ms
   at 50 VUs is unmeasured. Phase 4 brings k6.
-- The largest sheet ever created in this system has 25 rows and 3 columns. The
-  60 fps budget at 2,000 rows is untested and there is no seed script yet.
+- Nobody has used the grid for real work. It has been driven by tests and by
+  two scripted browser sessions, which is not the same as someone trying to get
+  something done in it and finding out what is missing.
 - The worker still consumes nothing. No SQS queue exists.
 - Redis is running and healthy and the API still does not connect to it.
 - Nothing is deployed anywhere.
@@ -159,6 +222,44 @@ Worth revisiting when the load test in Phase 4 gives a number to beat.
 189s against 130s for jvm and 24s for web. Tolerable now.
 
 **7. Local Node is 26, CI Node is 22.**
+
+**9. The bearer token lives in sessionStorage, readable by any script on the
+page.** It survives a refresh and dies with the tab. localStorage would live
+longer and in-memory would make the app unusable to demo. None of the three
+defends against XSS; the correct answer is an httpOnly cookie, which needs CSRF
+protection and a server change. A 15 minute expiry keeps the window small.
+Chosen deliberately, written up in `web/src/state/authStore.ts`.
+
+**10. There is no router, so a sheet has no shareable URL.** The open sheet is
+remembered in sessionStorage, so a refresh does not throw you back to the list,
+but you cannot send anyone a link to a sheet. Adding react-router is the fix
+and it is a five minute change when deep links actually matter.
+
+**11. The grid cannot delete or reorder anything.** No row delete, no column
+delete, no rename, no drag to reorder. That is not a UI omission: the API has
+no endpoints for any of it (Known issue 3). Reordering means rewriting the
+positions of everything after the moved item, which is its own concurrency
+problem.
+
+**12. `make seed` writes to Postgres directly, bypassing the API.** It is a
+test fixture and says so at the top of the file in capitals. 2,000 rows through
+`POST /rows` would be 2,000 round trips and 2,000 transactions; the SQL takes
+under half a second. The cost is that it proves nothing about the API, and it
+must never be mistaken for a bulk import feature.
+
+**13. The fps assertion in CI is deliberately loose.** `performance.spec.ts`
+asserts a 50 ms p95, not the 16.7 ms the budget implies, because frame timing
+on a shared CI runner is noisy and a flaky performance gate teaches people to
+ignore red builds. The real number is measured locally and recorded above. If
+that trade is wrong, the fix is a dedicated perf run, not a tighter threshold
+on a noisy runner.
+
+**14. React Compiler cannot memoise the Grid component.** `useVirtualizer`
+returns fresh function identities each render, so the compiler skips the whole
+component, which eslint reports as a warning. That warning is left in place
+rather than silenced, because it is true, and it is why `GridCell` is wrapped
+in `memo()` by hand. If that memo is ever removed, the 60 fps budget goes with
+it.
 
 **8. The compose stack runs with a committed JWT secret.** It is in
 `docker-compose.yml` in plain text and named
