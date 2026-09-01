@@ -1,5 +1,5 @@
-# Test profile. The datasource points at a Testcontainers Postgres, injected
-# at runtime by @DynamicPropertySource, so nothing here hardcodes a host.
+# Test profile. The datasource and Redis point at Testcontainers, injected at
+# runtime by @DynamicPropertySource, so nothing here hardcodes a host.
 
 gridwork:
   jwt:
@@ -8,6 +8,8 @@ gridwork:
     secret: test-secret-that-is-definitely-long-enough-for-hs256
     issuer: gridwork
     ttl: 15m
+  websocket:
+    allowed-origins: http://localhost:5173
 
 management:
   endpoint:

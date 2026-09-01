@@ -20,6 +20,8 @@ spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+spring-boot-starter-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 flyway-core = { module = "org.flywaydb:flyway-core" }
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
@@ -46,6 +48,7 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 testcontainers-localstack = { module = "org.testcontainers:localstack" }
+testcontainers-redis = { module = "com.redis:testcontainers-redis", version = "2.2.4" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 
 [plugins]

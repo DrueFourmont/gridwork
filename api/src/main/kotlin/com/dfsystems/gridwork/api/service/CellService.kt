@@ -3,6 +3,8 @@ package com.dfsystems.gridwork.api.service
 import com.dfsystems.gridwork.api.persistence.CellRepository
 import com.dfsystems.gridwork.api.persistence.ColumnRepository
 import com.dfsystems.gridwork.api.persistence.StoredCell
+import com.dfsystems.gridwork.api.realtime.CellsChangedEvent
+import com.dfsystems.gridwork.api.realtime.Outbound
 import com.dfsystems.gridwork.api.web.CellConflictException
 import com.dfsystems.gridwork.api.web.NotFoundException
 import com.dfsystems.gridwork.api.web.Problem
@@ -41,6 +43,7 @@ class CellService(
     private val cells: CellRepository,
     private val columns: ColumnRepository,
     private val access: AccessService,
+    private val events: org.springframework.context.ApplicationEventPublisher,
 ) {
 
     data class RequestedWrite(
@@ -161,7 +164,9 @@ class CellService(
             )
         }
         // Same transaction as the write, so history cannot drift from the data.
-        cells.recordHistory(
+        // It doubles as the replay log the websocket protocol reads, see
+        // CellHistoryRepository.
+        val sequences = cells.recordHistory(
             sheetId = sheetId,
             entries = writes.map { write ->
                 CellRepository.HistoryEntry(
@@ -172,6 +177,25 @@ class CellService(
                 )
             },
             changedBy = actorId,
+        )
+
+        // Raised, not published. A TransactionalEventListener holds it until
+        // this transaction commits, so no other replica can be told about a
+        // change it would not yet be able to read. See ADR 0007.
+        events.publishEvent(
+            CellsChangedEvent(
+                applied.mapIndexed { index, cell ->
+                    Outbound.CellChanged(
+                        sheetId = sheetId.toString(),
+                        rowId = cell.address.rowId.toString(),
+                        columnId = cell.address.columnId.toString(),
+                        value = cell.value,
+                        version = cell.version.value,
+                        sequence = sequences.getOrElse(index) { 0L },
+                        changedBy = actorId.toString(),
+                    )
+                },
+            ),
         )
         return applied
     }

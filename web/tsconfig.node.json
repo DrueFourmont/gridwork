@@ -19,5 +19,11 @@
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "eslint.config.js", "e2e"]
+  "include": [
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.clip.config.ts",
+    "eslint.config.js",
+    "e2e"
+  ]
 }

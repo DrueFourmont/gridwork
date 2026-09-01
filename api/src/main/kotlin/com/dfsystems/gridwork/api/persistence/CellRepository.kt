@@ -158,32 +158,46 @@ class CellRepository(private val jdbc: NamedParameterJdbcTemplate) {
         )
     }
 
-    /** Appends to the audit trail. Same transaction as the write it describes. */
+    /**
+     * Appends to the audit trail, in the same transaction as the write it
+     * describes, and returns the sequence assigned to each entry.
+     *
+     * The sequences matter beyond the audit: cell_history doubles as the
+     * replay log a reconnecting websocket client reads, so a live update has
+     * to carry the same sequence a replay would give it. Otherwise a client
+     * could not tell whether it had already seen a change.
+     */
     fun recordHistory(
         sheetId: SheetId,
         entries: List<HistoryEntry>,
         changedBy: UserId,
-    ) {
-        if (entries.isEmpty()) return
-        val batch = entries.map { entry ->
-            MapSqlParameterSource()
-                .addValue("rowId", entry.address.rowId.value)
-                .addValue("columnId", entry.address.columnId.value)
-                .addValue("sheetId", sheetId.value)
-                .addValue("oldValue", entry.oldValue)
-                .addValue("newValue", entry.newValue)
-                .addValue("version", entry.newVersion.value)
-                .addValue("changedBy", changedBy.value)
-        }.toTypedArray()
-        jdbc.batchUpdate(
+    ): List<Long> {
+        if (entries.isEmpty()) return emptyList()
+        // One multi row insert with a returning clause rather than a batch,
+        // because a batchUpdate cannot give back generated keys in order.
+        val values = entries.indices.joinToString(",") { index ->
+            "(:rowId$index, :columnId$index, :sheetId, :oldValue$index, " +
+                ":newValue$index, :version$index, :changedBy)"
+        }
+        val params = MapSqlParameterSource()
+            .addValue("sheetId", sheetId.value)
+            .addValue("changedBy", changedBy.value)
+        entries.forEachIndexed { index, entry ->
+            params.addValue("rowId$index", entry.address.rowId.value)
+            params.addValue("columnId$index", entry.address.columnId.value)
+            params.addValue("oldValue$index", entry.oldValue)
+            params.addValue("newValue$index", entry.newValue)
+            params.addValue("version$index", entry.newVersion.value)
+        }
+        return jdbc.query(
             """
             insert into cell_history
                 (row_id, column_id, sheet_id, old_value, new_value, version, changed_by)
-            values
-                (:rowId, :columnId, :sheetId, :oldValue, :newValue, :version, :changedBy)
+            values $values
+            returning id
             """.trimIndent(),
-            batch,
-        )
+            params,
+        ) { rs, _ -> rs.getLong("id") }
     }
 
     data class HistoryEntry(

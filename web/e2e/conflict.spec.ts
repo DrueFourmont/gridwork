@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, createAccount, createSheetWithGrid, signIn } from './support'
+import { API, createAccount, createSheetWithGrid, signIn, suppressLiveUpdates } from './support'
 
 /**
  * The 409, end to end, with a real second writer.
@@ -7,6 +7,12 @@ import { API, createAccount, createSheetWithGrid, signIn } from './support'
  * The browser edits a cell. A separate API call, standing in for another
  * person, has already moved that cell on. The conflict dialog is the payoff
  * for everything ADR 0001 describes.
+ *
+ * Live updates are suppressed in these tests, and that is the point rather
+ * than a workaround. Since Phase 3 a connected browser usually sees the other
+ * person's change arrive and simply edits the new version, so no conflict
+ * happens at all. Conflicts are now the case where the live update did not get
+ * through, and that is the case worth testing.
  */
 test('a cell changed by someone else produces a merge prompt, not a silent overwrite', async ({
   page,
@@ -16,6 +22,7 @@ test('a cell changed by someone else produces a merge prompt, not a silent overw
   const { sheetId, columnId, rowId } = await createSheetWithGrid(request, account, 'Conflict test')
   const headers = { Authorization: `Bearer ${account.token}` }
 
+  await suppressLiveUpdates(page)
   await signIn(page, account)
   await page.goto('/')
   await page.getByTestId('open-sheet-Conflict test').click()
@@ -57,6 +64,7 @@ test('keeping mine retries at the version the server reported and wins', async (
   const { sheetId, columnId, rowId } = await createSheetWithGrid(request, account, 'Keep mine test')
   const headers = { Authorization: `Bearer ${account.token}` }
 
+  await suppressLiveUpdates(page)
   await signIn(page, account)
   await page.goto('/')
   await page.getByTestId('open-sheet-Keep mine test').click()

@@ -21,7 +21,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 | 0 | Scaffold: Gradle multi-project, Vite app, compose, CI | done |
 | 1 | REST API: versioned cells, idempotency keys, cursor pagination, OpenAPI | done |
 | 2 | Grid UI: virtualised, optimistic edits, conflict handling | done |
-| 3 | Real-time: WebSockets, Redis fan-out across two replicas, replay | not started |
+| 3 | Real-time: WebSockets, Redis fan-out across two replicas, replay | done |
 | 4 | Automations: outbox relay, SQS, idempotent worker, DLQ, loop stop, load test | not started |
 | 5 | AI builder: tool-use draft, validator warnings, evals gating main | not started |
 | 6 | AWS: Terraform, EKS, Helm, OIDC CI/CD, zero-downtime restart | not started |
@@ -33,6 +33,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 - API docs (Swagger UI): `http://localhost:8080/swagger-ui.html` when running locally, not yet deployed
 - Architecture: `docs/architecture.svg` (Phase 6)
 - Walkthrough video: Phase 7
+- Two replica live update clip: `docs/clips/`
 - Plan: `docs/PLAN-SUMMARY.md`
 - Decisions: `docs/adr/`
 - Verification ledger: `docs/HANDOFF.md`

@@ -19,6 +19,9 @@ web/dist/
 web/coverage/
 web/playwright-report/
 web/test-results/
+# Playwright writes raw traces next to the committed clips.
+docs/clips/.last-run.json
+docs/clips/**/trace.zip
 
 # infra
 infra/terraform/.terraform/

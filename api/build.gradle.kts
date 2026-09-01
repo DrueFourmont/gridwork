@@ -16,6 +16,10 @@ dependencies {
     // guardrails forbid, it is the token validation machinery. See ADR 0004.
     implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.spring.boot.starter.actuator)
+    // Phase 3. Redis carries live updates between replicas; websocket carries
+    // them to browsers. See ADR 0007.
+    implementation(libs.spring.boot.starter.data.redis)
+    implementation(libs.spring.boot.starter.websocket)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
     implementation(libs.flyway.core)
     implementation(libs.jackson.module.kotlin)

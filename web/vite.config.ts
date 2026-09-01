@@ -24,6 +24,14 @@ const proxy = {
     target: apiTarget,
     changeOrigin: true,
   },
+  // The live update socket. ws: true is what makes the proxy forward the
+  // upgrade handshake instead of treating it as a normal request, and without
+  // it the browser gets a 400 that looks like the endpoint does not exist.
+  '/ws': {
+    target: apiTarget,
+    changeOrigin: true,
+    ws: true,
+  },
 }
 
 export default defineConfig({

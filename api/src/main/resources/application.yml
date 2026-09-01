@@ -38,6 +38,10 @@ spring:
         jdbc:
           batch_size: 100
 
+  data:
+    redis:
+      url: ${REDIS_URL}
+
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -69,9 +73,11 @@ management:
         liveness:
           include: livenessState
         readiness:
-          # Redis joins this group in Phase 3, when the fan-out lands and
-          # spring-boot-starter-data-redis is actually on the classpath.
-          include: readinessState,db
+          # Redis is in readiness from Phase 3 on. A replica that cannot reach
+          # Redis can still serve reads and writes, but it cannot deliver live
+          # updates, so it should not be sent new traffic while a healthy
+          # replica exists.
+          include: readinessState,db,redis
   health:
     livenessstate:
       enabled: true
@@ -98,6 +104,10 @@ gridwork:
     # Short lived on purpose. There is no refresh token and no revocation list,
     # so the expiry is the only thing that limits the damage of a leaked token.
     ttl: 15m
+  websocket:
+    # No default. A wrong value here silently accepts sockets from any page on
+    # the internet, so it has to be stated.
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS}
 
 ---
 spring:
@@ -108,6 +118,9 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gridwork}
     username: ${DATABASE_USER:gridwork}
     password: ${DATABASE_PASSWORD:gridwork}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
 
 gridwork:
   jwt:
@@ -115,6 +128,10 @@ gridwork:
     # .env file. Any real deployment sets JWT_SECRET. The prod profile has no
     # default at all, so a missing secret there fails at startup.
     secret: ${JWT_SECRET:local-development-only-secret-not-for-any-real-use}
+  websocket:
+    # The Vite dev server and the preview server Playwright runs against.
+    # 5174 is the second Vite server used when recording the two replica clip.
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:4173}
 
 management:
   endpoint:

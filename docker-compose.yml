@@ -97,5 +97,42 @@ services:
     # server.shutdown=graceful and the 25s phase timeout in application.yml.
     stop_grace_period: 30s
 
+  # A second, identical replica.
+  #
+  # Not for capacity. It exists so the claim in CLAUDE.md that "API replicas
+  # are stateless" is something you can watch rather than something you have to
+  # believe: open one browser against 8080 and another against 8081, type in
+  # one, and the other updates. Nothing is shared between these two containers
+  # except Postgres and Redis.
+  #
+  # Flyway is disabled here so two replicas cannot race each other running the
+  # same migrations against the same database on a cold start.
+  api-replica:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DATABASE_URL: jdbc:postgresql://postgres:5432/gridwork
+      DATABASE_USER: gridwork
+      DATABASE_PASSWORD: gridwork
+      REDIS_URL: redis://redis:6379
+      SQS_ENDPOINT: http://localstack:4566
+      AWS_REGION: us-west-2
+      JWT_SECRET: local-compose-only-secret-not-for-any-real-use
+      SPRING_FLYWAY_ENABLED: "false"
+    ports:
+      - "8081:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 45s
+    stop_grace_period: 30s
+
 volumes:
   postgres-data:

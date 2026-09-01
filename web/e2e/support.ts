@@ -53,3 +53,20 @@ export async function createSheetWithGrid(
 
   return { sheetId, columnId, rowId }
 }
+
+/**
+ * Leaves the websocket open but delivers nothing from the server.
+ *
+ * Needed by the conflict tests from Phase 3 onwards. Live updates make
+ * conflicts rare on purpose: if the other person's change reaches your browser
+ * before you type, you are editing the current version and there is nothing to
+ * conflict with. So to test the conflict path at all, the client has to be one
+ * that did not get the update, which is a real situation whenever the socket is
+ * degraded, and it is precisely when the version check earns its place.
+ */
+export async function suppressLiveUpdates(page: Page): Promise<void> {
+  await page.routeWebSocket(/\/ws\/sheet/, () => {
+    // Accept the connection and then say nothing. The client authenticates
+    // into the void and never learns about anyone else's writes.
+  })
+}

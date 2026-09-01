@@ -17,7 +17,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.UUID
 
@@ -128,12 +130,37 @@ abstract class ApiIntegrationTest {
         @JvmStatic
         private val postgres = PostgreSQLContainer("postgres:16-alpine").apply { start() }
 
+        /**
+         * A real Redis, not an embedded fake. Phase 3's whole claim is that two
+         * replicas see each other's changes through Redis pub/sub, and a fake
+         * would prove nothing about that.
+         */
+        @JvmStatic
+        protected val redis: GenericContainer<*> =
+            GenericContainer(DockerImageName.parse("redis:7-alpine"))
+                .withExposedPorts(6379)
+                .apply { start() }
+
+        @JvmStatic
+        protected fun redisUrl(): String =
+            "redis://" + redis.host + ":" + redis.getMappedPort(6379).toString()
+
         @DynamicPropertySource
         @JvmStatic
         fun properties(registry: DynamicPropertyRegistry) {
             registry.add("spring.datasource.url", postgres::getJdbcUrl)
             registry.add("spring.datasource.username", postgres::getUsername)
             registry.add("spring.datasource.password", postgres::getPassword)
+            registry.add("spring.data.redis.url") { redisUrl() }
         }
+
+        @JvmStatic
+        protected fun jdbcUrl(): String = postgres.jdbcUrl
+
+        @JvmStatic
+        protected fun dbUser(): String = postgres.username
+
+        @JvmStatic
+        protected fun dbPassword(): String = postgres.password
     }
 }

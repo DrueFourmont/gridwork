@@ -60,6 +60,12 @@ class SecurityConfig(
                     "/swagger-ui/**",
                 ).permitAll()
                 auth.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                // The websocket handshake carries no Authorization header,
+                // because a browser cannot set one on a websocket. It is
+                // permitted here and authenticated by its first frame instead,
+                // in SheetWebSocketHandler. A socket that does not
+                // authenticate is closed and can do nothing in the meantime.
+                auth.requestMatchers("/ws/**").permitAll()
                 // Metrics are an internal surface. In Kubernetes the scraper
                 // reaches them on the pod network, not through the ingress.
                 auth.requestMatchers("/actuator/prometheus").denyAll()
