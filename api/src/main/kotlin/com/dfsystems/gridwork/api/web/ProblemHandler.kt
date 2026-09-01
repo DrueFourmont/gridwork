@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.NoHandlerFoundException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 import jakarta.servlet.http.HttpServletRequest
 
 /**
@@ -146,7 +147,7 @@ class ProblemHandler(private val problems: ProblemFactory) {
         ),
     )
 
-    @ExceptionHandler(NoHandlerFoundException::class)
+    @ExceptionHandler(NoHandlerFoundException::class, NoResourceFoundException::class)
     fun onNoHandler(request: HttpServletRequest): ResponseEntity<Problem> = respond(
         problems.of(HttpStatus.NOT_FOUND, "No endpoint matches this path.", request.requestURI),
     )

@@ -63,6 +63,31 @@ class ActuatorHealthIT : ApiIntegrationTest() {
     }
 
     @Test
+    fun `an unknown path is 401 to a stranger, so paths cannot be probed`() {
+        // Security runs before routing, which is the right order: an
+        // unauthenticated caller learns nothing about which paths exist.
+        mockMvc.perform(get("/v1/sheets")).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `an unknown path is a 404 to a signed in caller, not a 500`() {
+        // Spring Boot routes an unmatched path to the static resource handler,
+        // which throws NoResourceFoundException. Without an explicit handler
+        // that falls into the catch-all and becomes a 500, so a client typo is
+        // reported as a server fault.
+        //
+        // Found while wiring the web app in Phase 2: the Vite proxy was
+        // stripping the /api prefix, so every request arrived at a path that
+        // did not exist, and the browser was told the server had failed rather
+        // than that the URL was wrong.
+        val user = register()
+        perform(get("/v1/sheets"), user.token)
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.requestId").exists())
+    }
+
+    @Test
     fun `the openapi document tells a reader how to authenticate`() {
         // Without this the document is technically complete and practically
         // useless: Swagger UI shows no Authorize button, so every protected

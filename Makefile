@@ -4,7 +4,7 @@
 # make up    starts the dependencies only. The API runs from make api, so a
 #            restart is a keystroke rather than a container rebuild.
 
-.PHONY: up api web test lint-ci down help
+.PHONY: up api web test lint-ci seed down help
 .DEFAULT_GOAL := help
 
 help:
@@ -34,6 +34,12 @@ test: ## run everything: workflow lint, jvm build and tests, web checks
 	$(MAKE) lint-ci
 	./gradlew build
 	cd web && npm run typecheck && npm run lint && npm run test
+
+seed: ## load a 2,000 row sheet for the grid performance budget
+# A test fixture, not a product path: it writes rows and cells straight to
+# Postgres because 2,000 API calls would take minutes. Register an account in
+# the app first, the seeded sheet is given to the oldest user.
+	docker compose exec -T postgres psql -U gridwork -d gridwork -v ON_ERROR_STOP=1 < scripts/seed.sql
 
 down: ## stop everything and remove the volumes
 	docker compose down -v

@@ -1,27 +1,52 @@
-import { useQuery } from '@tanstack/react-query'
-import { fetchHealth, HEALTH_QUERY_KEY } from './api/health'
+import { useCallback, useEffect, useState } from 'react'
+import { LoginScreen } from './components/LoginScreen'
+import { SheetList } from './components/SheetList'
+import { SheetView } from './components/SheetView'
+import { useAuthStore } from './state/authStore'
 
 /**
- * Phase 0 shell. It renders the product name and the result of one call to
- * the API health endpoint, which is enough to prove the whole path end to
- * end: browser, Vite proxy, Spring filter chain, actuator. The grid itself
- * arrives in Phase 2.
+ * Three screens, switched by state rather than by a router.
+ *
+ * Deliberate: react-router would be a dependency and a bundle cost for three
+ * views. The price is that a sheet has no shareable URL, which is recorded in
+ * docs/HANDOFF.md. When deep links matter, that is the moment to add a router.
+ *
+ * The open sheet is remembered in sessionStorage so a refresh does not throw
+ * you back to the list. That is not a substitute for real URLs, it is the
+ * cheapest fix for the most annoying half of not having them.
  */
+const OPEN_SHEET_KEY = 'gridwork.openSheet'
+
+function readOpenSheet(): string | null {
+  try {
+    return sessionStorage.getItem(OPEN_SHEET_KEY)
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
-  const { data, isPending, isError } = useQuery({
-    queryKey: HEALTH_QUERY_KEY,
-    queryFn: fetchHealth,
-    retry: false,
-  })
+  const token = useAuthStore((state) => state.token)
+  const [openSheetId, setOpenSheetId] = useState<string | null>(readOpenSheet)
 
-  const apiStatus = isPending ? 'checking' : isError ? 'unreachable' : (data?.status ?? 'unknown')
+  useEffect(() => {
+    try {
+      if (openSheetId === null) sessionStorage.removeItem(OPEN_SHEET_KEY)
+      else sessionStorage.setItem(OPEN_SHEET_KEY, openSheetId)
+    } catch {
+      // Storage unavailable. The app still works, it just forgets on refresh.
+    }
+  }, [openSheetId])
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-2">
-      <h1 className="text-3xl font-semibold">Gridwork</h1>
-      <p data-testid="api-status" className="text-sm text-neutral-500">
-        api: {apiStatus}
-      </p>
-    </main>
-  )
+  const closeSheet = useCallback(() => {
+    setOpenSheetId(null)
+  }, [])
+
+  if (token === null) return <LoginScreen />
+
+  if (openSheetId !== null) {
+    return <SheetView sheetId={openSheetId} onBack={closeSheet} />
+  }
+
+  return <SheetList onOpen={setOpenSheetId} />
 }

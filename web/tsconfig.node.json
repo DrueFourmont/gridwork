@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    // DOM is here because Playwright page.evaluate bodies are compiled with
+    // this config but execute inside the browser, so they legitimately use
+    // document, requestAnimationFrame, and friends.
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["node"],

@@ -10,10 +10,19 @@ import tailwindcss from '@tailwindcss/vite'
 const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:8080'
 
 const proxy = {
+  // No rewrite. The API genuinely lives under /api/v1, so stripping the /api
+  // prefix here would send /v1/sheets to a server that has no such route.
+  // Phase 0 stripped it because the only call was /actuator/health, which sits
+  // at the root; that made this look correct right up until the first real
+  // endpoint was called.
   '/api': {
     target: apiTarget,
     changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/api/, ''),
+  },
+  // Health and probes are at the root rather than under /api.
+  '/actuator': {
+    target: apiTarget,
+    changeOrigin: true,
   },
 }
 

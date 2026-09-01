@@ -20,7 +20,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 |---|---|---|
 | 0 | Scaffold: Gradle multi-project, Vite app, compose, CI | done |
 | 1 | REST API: versioned cells, idempotency keys, cursor pagination, OpenAPI | done |
-| 2 | Grid UI: virtualised, optimistic edits, conflict handling | not started |
+| 2 | Grid UI: virtualised, optimistic edits, conflict handling | done |
 | 3 | Real-time: WebSockets, Redis fan-out across two replicas, replay | not started |
 | 4 | Automations: outbox relay, SQS, idempotent worker, DLQ, loop stop, load test | not started |
 | 5 | AI builder: tool-use draft, validator warnings, evals gating main | not started |
@@ -76,6 +76,7 @@ does not already teach. Scope is a feature.
 make up        # postgres, redis, localstack
 make api       # spring boot on :8080
 make web       # vite on :5173
+make seed      # a 2,000 row sheet for the scroll budget, test fixture only
 make test      # workflow lint, jvm build and tests, web checks
 make down
 ```
