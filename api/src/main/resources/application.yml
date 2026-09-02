@@ -108,6 +108,21 @@ gridwork:
     # No default. A wrong value here silently accepts sockets from any page on
     # the internet, so it has to be stated.
     allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS}
+  sqs:
+    # The API is the outbox relay: it publishes committed events to the queue.
+    # With no queue url the relay keeps the events instead of discarding them,
+    # so a misconfiguration delays automations rather than losing them.
+    endpoint: ${SQS_ENDPOINT:}
+    queue-url: ${SQS_QUEUE_URL:}
+    region: ${AWS_REGION:us-west-2}
+  outbox:
+    relay:
+      enabled: ${GRIDWORK_OUTBOX_RELAY_ENABLED:true}
+      interval: 1000
+      # One hundred events per pass, every second, from every replica. Raise
+      # this together with the SQS batch size if the outbox starts growing
+      # faster than it drains under load.
+      batch-size: 100
 
 ---
 spring:

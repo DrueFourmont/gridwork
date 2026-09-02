@@ -22,7 +22,7 @@ than one replica, more than one writer, and a queue that delivers twice.
 | 1 | REST API: versioned cells, idempotency keys, cursor pagination, OpenAPI | done |
 | 2 | Grid UI: virtualised, optimistic edits, conflict handling | done |
 | 3 | Real-time: WebSockets, Redis fan-out across two replicas, replay | done |
-| 4 | Automations: outbox relay, SQS, idempotent worker, DLQ, loop stop, load test | not started |
+| 4 | Automations: outbox relay, SQS, idempotent worker, DLQ, loop stop, load test | done |
 | 5 | AI builder: tool-use draft, validator warnings, evals gating main | not started |
 | 6 | AWS: Terraform, EKS, Helm, OIDC CI/CD, zero-downtime restart | not started |
 | 7 | Docs: README, HANDOFF, ADRs, Loom | not started |
@@ -78,6 +78,7 @@ make up        # postgres, redis, localstack
 make api       # spring boot on :8080
 make web       # vite on :5173
 make seed      # a 2,000 row sheet for the scroll budget, test fixture only
+make load      # k6 against the batch update budget, needs the api running
 make test      # workflow lint, jvm build and tests, web checks
 make down
 ```

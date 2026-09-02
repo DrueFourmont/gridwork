@@ -51,8 +51,22 @@ services:
       AWS_DEFAULT_REGION: us-west-2
     ports:
       - "4566:4566"
+    volumes:
+      # LocalStack runs anything in ready.d once it is up, which is how the
+      # queue and its dead letter queue come into existence without a manual
+      # step everyone forgets.
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health | grep -q '\"sqs\": \"available\"'"]
+      # Accepts available OR running. LocalStack reports a service as
+      # "available" until something uses it and "running" afterwards, so
+      # checking only for "available" made the container go unhealthy the
+      # moment the init script created a queue. That check was correct from
+      # Phase 0 until the first thing actually used SQS.
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS http://localhost:4566/_localstack/health
+          | grep -Eq '"sqs": "(available|running)"'
       interval: 5s
       timeout: 5s
       retries: 20
@@ -73,6 +87,7 @@ services:
       DATABASE_PASSWORD: gridwork
       REDIS_URL: redis://redis:6379
       SQS_ENDPOINT: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/gridwork-events
       AWS_REGION: us-west-2
       # Local only, and obviously so. Passed explicitly rather than leaning on
       # the local profile's default, so this file shows how a real deployment
@@ -118,6 +133,7 @@ services:
       DATABASE_PASSWORD: gridwork
       REDIS_URL: redis://redis:6379
       SQS_ENDPOINT: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/gridwork-events
       AWS_REGION: us-west-2
       JWT_SECRET: local-compose-only-secret-not-for-any-real-use
       SPRING_FLYWAY_ENABLED: "false"
@@ -132,6 +148,34 @@ services:
       timeout: 3s
       retries: 12
       start_period: 45s
+    stop_grace_period: 30s
+
+  # The automation worker. A separate deployable from the API, sharing only
+  # the database, Redis, and the queue, which is the point: it can be scaled,
+  # restarted, and deployed on its own.
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DATABASE_URL: jdbc:postgresql://postgres:5432/gridwork
+      DATABASE_USER: gridwork
+      DATABASE_PASSWORD: gridwork
+      REDIS_URL: redis://redis:6379
+      SQS_ENDPOINT: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/gridwork-events
+      AWS_REGION: us-west-2
+      # The API owns migrations. The worker validates against the schema the
+      # API created rather than racing it.
+      SPRING_FLYWAY_ENABLED: "false"
+      # The worker does not relay. Its job is to consume; the API replicas
+      # drain the outbox. Running both here would be harmless thanks to SKIP
+      # LOCKED, but it would muddle what each deployable is for.
+      GRIDWORK_OUTBOX_RELAY_ENABLED: "false"
+    depends_on:
+      api:
+        condition: service_healthy
     stop_grace_period: 30s
 
 volumes:

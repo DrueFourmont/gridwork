@@ -4,7 +4,7 @@
 # make up    starts the dependencies only. The API runs from make api, so a
 #            restart is a keystroke rather than a container rebuild.
 
-.PHONY: up api web test lint-ci seed down help
+.PHONY: up api web test lint-ci seed load down help
 .DEFAULT_GOAL := help
 
 help:
@@ -40,6 +40,11 @@ seed: ## load a 2,000 row sheet for the grid performance budget
 # Postgres because 2,000 API calls would take minutes. Register an account in
 # the app first, the seeded sheet is given to the oldest user.
 	docker compose exec -T postgres psql -U gridwork -d gridwork -v ON_ERROR_STOP=1 < scripts/seed.sql
+
+load: ## run the k6 load test against a running api
+# Measures the PATCH cells:batchUpdate budget in CLAUDE.md: p95 under 200 ms
+# at 50 VUs. Needs make up and make api running first.
+	k6 run load/batch-update.js
 
 down: ## stop everything and remove the volumes
 	docker compose down -v

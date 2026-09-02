@@ -11,11 +11,13 @@ WORKDIR /src
 COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle gradle
 COPY domain/build.gradle.kts domain/
+COPY core/build.gradle.kts core/
 COPY api/build.gradle.kts api/
 COPY worker/build.gradle.kts worker/
 RUN ./gradlew --no-daemon :api:dependencies --quiet || true
 
 COPY domain domain
+COPY core core
 COPY api api
 RUN ./gradlew --no-daemon :api:bootJar -x test
 

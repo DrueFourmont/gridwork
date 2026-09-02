@@ -4,6 +4,15 @@ State of Gridwork at the end of each phase. Updated by the phase that changed it
 
 ## Current state
 
+Phase 4 is done. Cell changes leave the system through a transactional outbox,
+a relay in every API replica publishes them to SQS, and a separate worker
+deployable consumes them and runs automations through the same services the API
+uses. Loops stop at depth three. The first load test has been run and the
+numbers are below, including one that is not flattering.
+
+A `core/` module was extracted so the worker and the API genuinely share those
+services rather than having two copies. See ADR 0008.
+
 Phase 3 is done. Two API replicas now share live updates through Redis pub/sub,
 browsers hold a websocket per open sheet, and a client that was disconnected
 catches up by replaying `cell_history` rather than refetching the sheet.
@@ -48,8 +57,11 @@ web unit tests, 9 Playwright tests, 0 failures.**
 | `TwoReplicaRealtimeIT` | 4 | cross replica delivery, replay on reconnect, bad token, no access |
 | `liveConnection.test.ts` | 10 | first frame auth, cursor tracking, backoff, resync, unknown frames |
 | `realtime.spec.ts` | 3 | two browsers see each other, echo is a no op, replay after a real drop |
+| `AutomationRuleTest` | 22 | triggers, every comparator, both loop defences, depth arithmetic |
+| `AutomationPipelineIT` | 8 | outbox and cell commit together, real SQS round trip, duplicate suppressed, loop stops |
+| `WorkerContextTest` | 4 | worker boots, resolves the API's own CellService, still has no web server |
 
-Phase 3 totals: **111 JVM tests, 43 web unit tests, 12 Playwright tests, 0
+Phase 4 totals: **143 JVM tests, 43 web unit tests, 12 Playwright tests, 0
 failures.**
 
 Three worth naming:
@@ -66,6 +78,16 @@ Three worth naming:
   Postgres and Redis. A single context would pass with Redis removed
   altogether, because publisher and subscriber would be the same object in the
   same JVM, and the whole claim is that they are not.
+- **`a redelivered message does not apply the action twice`** marks every
+  outbox row unpublished and drains again, which is what an SQS redelivery
+  looks like from inside. The target cell's version must not move.
+- **`two automations pointing at each other stop at the depth limit`** is the
+  loop case no save time check can catch, because each automation is
+  individually reasonable.
+- **`the automation's own write is attributed and versioned like any other`**
+  asserts a `cell_history` row exists for the automated write. If the worker
+  wrote to the table directly, as an earlier design would have, there would be
+  none. That single assertion is what makes ADR 0008 checkable.
 
 
 93 tests, 0 failures, 0 errors, 0 skipped, on a cold
@@ -115,6 +137,10 @@ from scratch. Full request and response output is in the Phase 1 report.
 | Type validation runs against the column's type | `31/12/2026` into a DATE column returned 422 naming `updates[0].value` and `NOT_A_DATE` |
 | Cursor pagination walks 25 rows in pages of 10 | pages of 10, 10, 5 with a null cursor on the last, 25 rows total, no repeats |
 | Swagger UI loads and lists every endpoint | screenshotted in Drue's Chrome at `http://localhost:8080/swagger-ui.html` |
+| An automation fires end to end through compose | set Status to Done through REST, and the worker set Done to true about 4 seconds later, with its own `cell_history` row at version 2 |
+| The worker writes as a real user, through CellService | `cells.updated_by` is the user whose edit triggered it, and a history row exists, which a direct table write would not have produced |
+| The relay drains a backlog | 91,314 unpublished events cleared in about 23 seconds once the queue was configured |
+| LocalStack creates the queue and its DLQ on startup | `awslocal sqs list-queues` shows `gridwork-events` and `gridwork-events-dlq`, redrive after 5 receives |
 | Swagger UI can actually authenticate | Authorize button present, bearerAuth scheme in the document, padlocks on protected operations, register and login exempt |
 
 ## Verified in a real browser
@@ -177,6 +203,40 @@ web 23s, playwright smoke 201s.
 | worker Docker image | 300 MB | 244.2 MB | unchanged | unchanged | under |
 | web bundle, brotli | 250 kB | 68.0 kB | unchanged | 82.4 kB | under, 32.8 percent at Phase 3 (83.9 kB) |
 | Grid scroll, 2,000 rows | 60 fps | not tested | not tested | 0 frames over budget | met |
+| `PATCH cells:batchUpdate` p95 | 200 ms | unmeasured | unmeasured | **36.4 ms** at Phase 4 | met |
+
+**The load test, in full.** `make load`, k6, 50 virtual users, 30 seconds,
+against the full compose stack with two API replicas, a worker, and LocalStack
+SQS. Each virtual user owns its own row, so this measures throughput rather
+than the conflict path.
+
+```
+http_reqs                88,637   (2,818 per second)
+batch_update p50         14.7 ms
+batch_update p90         27.5 ms
+batch_update p95         36.4 ms      budget 200 ms
+checks succeeded         100.00%      0 server errors
+```
+
+**The number that is not flattering, and matters more.** The same run produced
+88,583 outbox events. The relay cleared them at roughly 4,000 per second, which
+keeps up. A single worker consumed them at **78 per second**, measured over a
+sustained minute:
+
+```
+t+10s  +781 in 10s    78/s
+t+20s  +785 in 10s    78/s
+t+30s  +785 in 10s    78/s
+t+40s  +785 in 10s    78/s
+t+50s  +785 in 10s    78/s
+t+60s  +790 in 10s    79/s
+```
+
+That is a thirty six times gap between what the API accepts and what one worker
+drains, on a sheet with no automations at all, where every event is a skip. It
+is not a bug and it is not a budget in CLAUDE.md, but it is the honest shape of
+the system: the worker is where capacity has to come from. Recorded as Known
+issue 22.
 
 **The 60 fps measurement, in full**, taken in a real Chromium over the
 `make seed` fixture, scrolling the whole 64,000 pixel height:
@@ -215,8 +275,13 @@ in a hurry. Watch this number every phase.
 - Nothing has been tested with more than two replicas, and nothing has run for
   longer than a few minutes. Socket churn, memory growth in the subscription
   map, and Redis reconnection after an outage are all unobserved.
-- No load test. The `PATCH cells:batchUpdate` p95 budget of 200 ms at 50 VUs is
-  unmeasured, and so is what live fan-out costs it. Phase 4 brings k6.
+- The dead letter queue exists and has never received anything. Nothing has
+  been made to fail five times, so the redrive policy is configured but
+  unproven.
+- The worker has only ever run as a single instance. Two workers sharing a
+  queue is implied by the idempotency test but has not been observed.
+- No automation has been created through the API, because there is no endpoint
+  for it. They are inserted with SQL. Phase 5 needs one.
 - Nothing is deployed anywhere.
 
 ## Known issues
@@ -279,6 +344,32 @@ on a shared CI runner is noisy and a flaky performance gate teaches people to
 ignore red builds. The real number is measured locally and recorded above. If
 that trade is wrong, the fix is a dedicated perf run, not a tighter threshold
 on a noisy runner.
+
+**20. `outbox_events` and `processed_events` are never pruned.** One thirty
+second load test left 88,583 outbox rows. Both need a scheduled delete of
+anything older than a window, and neither has one. The partial index on
+unpublished rows keeps the relay fast regardless, so this is a disk problem
+rather than a latency one, but it is real.
+
+**21. The relay holds row locks across an SQS call.** It publishes inside the
+claiming transaction, which is what stops two replicas publishing the same
+event, and it means a slow SQS call holds locks for its duration. Worth
+revisiting if queue latency ever becomes the constraint.
+
+**22. One worker consumes 78 events per second against an API that accepts
+2,818 writes per second.** Measured, not estimated, on a sheet with no
+automations where every event is a skip. The worker processes a batch of ten
+serially with three database round trips per event. The fixes are more worker
+replicas or concurrency within a batch; neither is built.
+
+**23. Automations can only be created with SQL.** No endpoint, no UI, and no
+validation at the API boundary, so `AutomationRule.validate` is written and
+tested but nothing calls it in production. Phase 5 wires it up.
+
+**24. The load test leaves a large queue behind.** Purging is manual with
+`awslocal sqs purge-queue`. Running `make load` and then expecting an
+automation to fire promptly will disappoint, because the event sits behind
+however many thousand the test just produced. `make down` clears everything.
 
 **15. Live updates make conflicts rare, so the 409 path is now the degraded
 path.** A connected browser usually receives the other person's change before
