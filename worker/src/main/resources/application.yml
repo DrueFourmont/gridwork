@@ -1,14 +1,41 @@
 # Gridwork automation worker.
 #
 # Not a web application: there is no HTTP port and no servlet container. It
-# pulls from SQS. Every value comes from an environment variable, matching
-# .env.example.
+# pulls from SQS and performs actions through the same services the API uses,
+# which is why it now needs the database. Before Phase 4 it needed nothing.
+#
+# Every value comes from an environment variable, matching .env.example.
 
 spring:
   application:
     name: gridwork-worker
   main:
     web-application-type: none
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      pool-name: gridwork-worker-pool
+      # Smaller than the API's. The worker is a handful of consumer threads,
+      # not a servlet container, so a large pool would just hold connections
+      # the database could give to the API instead.
+      maximum-pool-size: 5
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  # The API owns the schema. Two deployables running migrations against one
+  # database is a race, and the worker is the one that does not need to win it.
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      url: ${REDIS_URL}
 
 gridwork:
   sqs:
@@ -20,3 +47,16 @@ logging:
   level:
     root: INFO
     com.dfsystems.gridwork: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gridwork}
+    username: ${DATABASE_USER:gridwork}
+    password: ${DATABASE_PASSWORD:gridwork}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}

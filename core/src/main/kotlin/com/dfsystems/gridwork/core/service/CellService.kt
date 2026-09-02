@@ -1,14 +1,14 @@
-package com.dfsystems.gridwork.api.service
+package com.dfsystems.gridwork.core.service
 
-import com.dfsystems.gridwork.api.persistence.CellRepository
-import com.dfsystems.gridwork.api.persistence.ColumnRepository
-import com.dfsystems.gridwork.api.persistence.StoredCell
-import com.dfsystems.gridwork.api.realtime.CellsChangedEvent
-import com.dfsystems.gridwork.api.realtime.Outbound
-import com.dfsystems.gridwork.api.web.CellConflictException
-import com.dfsystems.gridwork.api.web.NotFoundException
-import com.dfsystems.gridwork.api.web.Problem
-import com.dfsystems.gridwork.api.web.UnprocessableException
+import com.dfsystems.gridwork.core.persistence.CellRepository
+import com.dfsystems.gridwork.core.persistence.ColumnRepository
+import com.dfsystems.gridwork.core.persistence.StoredCell
+import com.dfsystems.gridwork.core.realtime.CellsChangedEvent
+import com.dfsystems.gridwork.core.realtime.Outbound
+import com.dfsystems.gridwork.core.error.CellConflictException
+import com.dfsystems.gridwork.core.error.NotFoundException
+import com.dfsystems.gridwork.core.error.FieldError
+import com.dfsystems.gridwork.core.error.UnprocessableException
 import com.dfsystems.gridwork.domain.BatchOutcome
 import com.dfsystems.gridwork.domain.BatchUpdateRule
 import com.dfsystems.gridwork.domain.CellAddress
@@ -73,21 +73,21 @@ class CellService(
         // Validate every value against its column's type before touching the
         // database, and report all the bad ones at once. Failing on the first
         // one makes a client fix a fifty cell paste one cell per round trip.
-        val problems = mutableListOf<Problem.FieldProblem>()
+        val problems = mutableListOf<FieldError>()
         val writes = requested.mapIndexedNotNull { index, item ->
             val address = CellAddress(RowId(item.rowId), ColumnId(item.columnId))
             val type = columnTypes[address.columnId]
             if (type == null) {
-                problems += Problem.FieldProblem("updates[$index].columnId", "is not a column of this sheet")
+                problems += FieldError("updates[$index].columnId", "is not a column of this sheet")
                 return@mapIndexedNotNull null
             }
             if (item.expectedVersion < 1) {
-                problems += Problem.FieldProblem("updates[$index].expectedVersion", "must be 1 or greater")
+                problems += FieldError("updates[$index].expectedVersion", "must be 1 or greater")
                 return@mapIndexedNotNull null
             }
             when (val parsed = type.parse(item.value)) {
                 is CellParse.Invalid -> {
-                    problems += Problem.FieldProblem(
+                    problems += FieldError(
                         "updates[$index].value",
                         "is not valid for a $type column (${parsed.problem})",
                     )
@@ -112,7 +112,7 @@ class CellService(
                 throw UnprocessableException(
                     "The same cell appears more than once in this batch.",
                     outcome.addresses.map {
-                        Problem.FieldProblem("updates", "duplicate cell ${it.rowId}/${it.columnId}")
+                        FieldError("updates", "duplicate cell ${it.rowId}/${it.columnId}")
                     },
                 )
 

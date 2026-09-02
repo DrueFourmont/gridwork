@@ -1,11 +1,11 @@
-package com.dfsystems.gridwork.api.service
+package com.dfsystems.gridwork.core.service
 
-import com.dfsystems.gridwork.api.persistence.CellRepository
-import com.dfsystems.gridwork.api.persistence.ColumnRepository
-import com.dfsystems.gridwork.api.persistence.RowEntity
-import com.dfsystems.gridwork.api.persistence.RowRepository
-import com.dfsystems.gridwork.api.persistence.StoredCell
-import com.dfsystems.gridwork.api.web.UnprocessableException
+import com.dfsystems.gridwork.core.persistence.CellRepository
+import com.dfsystems.gridwork.core.persistence.ColumnRepository
+import com.dfsystems.gridwork.core.persistence.RowEntity
+import com.dfsystems.gridwork.core.persistence.RowRepository
+import com.dfsystems.gridwork.core.persistence.StoredCell
+import com.dfsystems.gridwork.core.error.UnprocessableException
 import com.dfsystems.gridwork.domain.ColumnId
 import com.dfsystems.gridwork.domain.RowId
 import com.dfsystems.gridwork.domain.SheetId

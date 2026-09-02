@@ -1,8 +1,8 @@
-package com.dfsystems.gridwork.api.service
+package com.dfsystems.gridwork.core.service
 
-import com.dfsystems.gridwork.api.persistence.IdempotencyRepository
-import com.dfsystems.gridwork.api.web.ConflictException
-import com.dfsystems.gridwork.api.web.UnprocessableException
+import com.dfsystems.gridwork.core.persistence.IdempotencyRepository
+import com.dfsystems.gridwork.core.error.ConflictException
+import com.dfsystems.gridwork.core.error.UnprocessableException
 import com.dfsystems.gridwork.domain.UserId
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service

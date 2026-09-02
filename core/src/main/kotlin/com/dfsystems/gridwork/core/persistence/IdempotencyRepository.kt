@@ -1,4 +1,4 @@
-package com.dfsystems.gridwork.api.persistence
+package com.dfsystems.gridwork.core.persistence
 
 import com.dfsystems.gridwork.domain.UserId
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource

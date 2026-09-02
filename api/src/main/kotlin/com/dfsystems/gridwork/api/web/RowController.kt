@@ -1,8 +1,8 @@
 package com.dfsystems.gridwork.api.web
 
 import com.dfsystems.gridwork.api.security.userId
-import com.dfsystems.gridwork.api.service.IdempotencyService
-import com.dfsystems.gridwork.api.service.RowService
+import com.dfsystems.gridwork.core.service.IdempotencyService
+import com.dfsystems.gridwork.core.service.RowService
 import com.dfsystems.gridwork.api.web.dto.CellResponse
 import com.dfsystems.gridwork.api.web.dto.Page
 import com.dfsystems.gridwork.api.web.dto.RowResponse

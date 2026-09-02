@@ -6,6 +6,10 @@ plugins {
 
 dependencies {
     implementation(project(":domain"))
+    // The same services the API uses, so an automation action goes through
+    // the same versioning, history, permissions, and outbox as a human edit.
+    // See CLAUDE.md and ADR 0008.
+    implementation(project(":core"))
 
     // No web starter. The worker pulls from SQS, it does not serve HTTP.
     implementation(libs.spring.boot.starter)
@@ -20,5 +24,6 @@ dependencies {
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.localstack)
+    testImplementation(libs.testcontainers.postgresql)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

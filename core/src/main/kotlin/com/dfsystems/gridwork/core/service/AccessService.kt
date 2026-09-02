@@ -1,10 +1,10 @@
-package com.dfsystems.gridwork.api.service
+package com.dfsystems.gridwork.core.service
 
-import com.dfsystems.gridwork.api.persistence.SheetEntity
-import com.dfsystems.gridwork.api.persistence.SheetMemberRepository
-import com.dfsystems.gridwork.api.persistence.SheetRepository
-import com.dfsystems.gridwork.api.web.ForbiddenException
-import com.dfsystems.gridwork.api.web.NotFoundException
+import com.dfsystems.gridwork.core.persistence.SheetEntity
+import com.dfsystems.gridwork.core.persistence.SheetMemberRepository
+import com.dfsystems.gridwork.core.persistence.SheetRepository
+import com.dfsystems.gridwork.core.error.ForbiddenException
+import com.dfsystems.gridwork.core.error.NotFoundException
 import com.dfsystems.gridwork.domain.SheetId
 import com.dfsystems.gridwork.domain.SheetRole
 import com.dfsystems.gridwork.domain.UserId

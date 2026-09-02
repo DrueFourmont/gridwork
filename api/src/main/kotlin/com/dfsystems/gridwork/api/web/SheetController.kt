@@ -1,8 +1,8 @@
 package com.dfsystems.gridwork.api.web
 
 import com.dfsystems.gridwork.api.security.userId
-import com.dfsystems.gridwork.api.service.IdempotencyService
-import com.dfsystems.gridwork.api.service.SheetService
+import com.dfsystems.gridwork.core.service.IdempotencyService
+import com.dfsystems.gridwork.core.service.SheetService
 import com.dfsystems.gridwork.api.web.dto.AddMemberRequest
 import com.dfsystems.gridwork.api.web.dto.ColumnResponse
 import com.dfsystems.gridwork.api.web.dto.CreateColumnRequest
@@ -10,8 +10,8 @@ import com.dfsystems.gridwork.api.web.dto.CreateSheetRequest
 import com.dfsystems.gridwork.api.web.dto.MemberResponse
 import com.dfsystems.gridwork.api.web.dto.Page
 import com.dfsystems.gridwork.api.web.dto.SheetResponse
-import com.dfsystems.gridwork.api.persistence.ColumnEntity
-import com.dfsystems.gridwork.api.persistence.SheetEntity
+import com.dfsystems.gridwork.core.persistence.ColumnEntity
+import com.dfsystems.gridwork.core.persistence.SheetEntity
 import com.dfsystems.gridwork.domain.SheetId
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter

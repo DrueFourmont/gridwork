@@ -1,12 +1,12 @@
 package com.dfsystems.gridwork.api.service
 
-import com.dfsystems.gridwork.api.persistence.UserEntity
-import com.dfsystems.gridwork.api.persistence.UserRepository
+import com.dfsystems.gridwork.core.persistence.UserEntity
+import com.dfsystems.gridwork.core.persistence.UserRepository
 import com.dfsystems.gridwork.api.security.JwtService
-import com.dfsystems.gridwork.api.web.ApiException
-import com.dfsystems.gridwork.api.web.UnprocessableException
+import com.dfsystems.gridwork.core.error.ApiException
+import com.dfsystems.gridwork.core.error.ErrorKind
+import com.dfsystems.gridwork.core.error.UnprocessableException
 import com.dfsystems.gridwork.domain.UserId
-import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -55,5 +55,5 @@ class AuthService(
     // One message for both "no such account" and "wrong password", for the
     // same reason.
     private fun invalidCredentials() =
-        ApiException(HttpStatus.UNAUTHORIZED, "Email or password is incorrect.")
+        ApiException(ErrorKind.UNAUTHENTICATED, "Email or password is incorrect.")
 }

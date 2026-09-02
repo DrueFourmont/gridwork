@@ -1,8 +1,10 @@
 package com.dfsystems.gridwork.worker
 
 import org.slf4j.LoggerFactory
+import com.dfsystems.gridwork.core.CoreConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.annotation.Import
 import org.springframework.context.event.EventListener
 import org.springframework.boot.runApplication
 import org.springframework.stereotype.Component
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component
  * depth rule all arrive in Phase 4.
  */
 @SpringBootApplication
+@Import(CoreConfiguration::class)
 class GridworkWorkerApplication
 
 @Component

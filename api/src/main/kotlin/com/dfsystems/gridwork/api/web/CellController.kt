@@ -1,8 +1,11 @@
 package com.dfsystems.gridwork.api.web
 
+import com.dfsystems.gridwork.core.error.FieldError
+import com.dfsystems.gridwork.core.error.UnprocessableException
+
 import com.dfsystems.gridwork.api.security.userId
-import com.dfsystems.gridwork.api.service.CellService
-import com.dfsystems.gridwork.api.service.IdempotencyService
+import com.dfsystems.gridwork.core.service.CellService
+import com.dfsystems.gridwork.core.service.IdempotencyService
 import com.dfsystems.gridwork.api.web.dto.BatchUpdateRequest
 import com.dfsystems.gridwork.api.web.dto.BatchUpdateResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -100,7 +103,7 @@ class CellController(
     } catch (_: IllegalArgumentException) {
         throw UnprocessableException(
             "One or more ids are not valid UUIDs.",
-            listOf(Problem.FieldProblem(field, "is not a valid UUID")),
+            listOf(FieldError(field, "is not a valid UUID")),
         )
     }
 }

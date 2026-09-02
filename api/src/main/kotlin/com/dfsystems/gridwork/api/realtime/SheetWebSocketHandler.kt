@@ -1,8 +1,11 @@
 package com.dfsystems.gridwork.api.realtime
 
-import com.dfsystems.gridwork.api.persistence.CellHistoryRepository
-import com.dfsystems.gridwork.api.service.AccessService
-import com.dfsystems.gridwork.api.web.ApiException
+import com.dfsystems.gridwork.core.realtime.Inbound
+import com.dfsystems.gridwork.core.realtime.Outbound
+
+import com.dfsystems.gridwork.core.persistence.CellHistoryRepository
+import com.dfsystems.gridwork.core.service.AccessService
+import com.dfsystems.gridwork.core.error.ApiException
 import com.dfsystems.gridwork.domain.ReplayDecision
 import com.dfsystems.gridwork.domain.ReplayRule
 import com.dfsystems.gridwork.domain.Sequence

@@ -1,4 +1,4 @@
-package com.dfsystems.gridwork.api.realtime
+package com.dfsystems.gridwork.core.realtime
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory

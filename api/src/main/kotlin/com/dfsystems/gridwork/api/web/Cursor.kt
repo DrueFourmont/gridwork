@@ -1,5 +1,7 @@
 package com.dfsystems.gridwork.api.web
 
+import com.dfsystems.gridwork.core.error.UnprocessableException
+
 import java.time.Instant
 import java.util.Base64
 import java.util.UUID

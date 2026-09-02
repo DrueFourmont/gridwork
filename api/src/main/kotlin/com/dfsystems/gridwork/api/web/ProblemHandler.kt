@@ -1,5 +1,8 @@
 package com.dfsystems.gridwork.api.web
 
+import com.dfsystems.gridwork.core.error.ApiException
+import com.dfsystems.gridwork.core.error.CellConflictException
+import com.dfsystems.gridwork.core.error.ErrorKind
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -60,12 +63,27 @@ class ProblemHandler(private val problems: ProblemFactory) {
         request: HttpServletRequest,
     ): ResponseEntity<Problem> = respond(
         problems.of(
-            status = exception.status,
+            status = statusFor(exception.kind),
             detail = exception.message,
             instance = request.requestURI,
-            errors = exception.errors,
+            errors = exception.errors?.map { Problem.FieldProblem(it.field, it.message) },
         ),
     )
+
+    /**
+     * The only place the application's error kinds become HTTP.
+     *
+     * Core throws semantic errors rather than status codes, because the worker
+     * uses those same services and has no response to put a code on. Mapping
+     * happens here, at the edge that actually speaks HTTP.
+     */
+    private fun statusFor(kind: ErrorKind): HttpStatus = when (kind) {
+        ErrorKind.NOT_FOUND -> HttpStatus.NOT_FOUND
+        ErrorKind.FORBIDDEN -> HttpStatus.FORBIDDEN
+        ErrorKind.CONFLICT -> HttpStatus.CONFLICT
+        ErrorKind.UNPROCESSABLE -> HttpStatus.UNPROCESSABLE_ENTITY
+        ErrorKind.UNAUTHENTICATED -> HttpStatus.UNAUTHORIZED
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun onValidationFailure(

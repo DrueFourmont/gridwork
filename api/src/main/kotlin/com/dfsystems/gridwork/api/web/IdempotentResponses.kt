@@ -1,6 +1,6 @@
 package com.dfsystems.gridwork.api.web
 
-import com.dfsystems.gridwork.api.service.IdempotencyService
+import com.dfsystems.gridwork.core.service.IdempotencyService
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component

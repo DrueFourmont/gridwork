@@ -1,6 +1,6 @@
-package com.dfsystems.gridwork.api.persistence
+package com.dfsystems.gridwork.core.persistence
 
-import com.dfsystems.gridwork.api.realtime.Outbound
+import com.dfsystems.gridwork.core.realtime.Outbound
 import com.dfsystems.gridwork.domain.Sequence
 import com.dfsystems.gridwork.domain.SheetId
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource

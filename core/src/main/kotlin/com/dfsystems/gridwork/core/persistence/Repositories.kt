@@ -1,4 +1,4 @@
-package com.dfsystems.gridwork.api.persistence
+package com.dfsystems.gridwork.core.persistence
 
 import org.springframework.data.domain.Limit
 import org.springframework.data.jpa.repository.JpaRepository
