@@ -40,6 +40,10 @@ dependencies {
     // spring-boot-starter-web in the API, but the worker has no web starter by
     // design, and core's event publisher serialises to JSON.
     api(libs.spring.boot.starter.json)
+    // The relay publishes to SQS, and the worker consumes from it, so the
+    // client belongs to the code they share rather than to either one.
+    api(platform(libs.aws.sdk.bom))
+    api(libs.aws.sdk.sqs)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.kotlin.reflect)
 

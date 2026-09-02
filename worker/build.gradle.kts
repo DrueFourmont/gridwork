@@ -25,5 +25,21 @@ dependencies {
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.localstack)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.flyway.core)
+    testRuntimeOnly(libs.flyway.database.postgresql)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
+
+/**
+ * The API owns the schema, and the worker's integration tests need it to
+ * exist. Copying at build time rather than checking in a second copy, because
+ * two copies of a migration set drift and the drift is discovered in
+ * production.
+ */
+val copyMigrations by tasks.registering(Copy::class) {
+    from(project(":api").file("src/main/resources/db/migration"))
+    into(layout.buildDirectory.dir("resources/test/db/migration"))
+}
+
+tasks.named("processTestResources") { finalizedBy(copyMigrations) }
+tasks.named("test") { dependsOn(copyMigrations) }

@@ -3,6 +3,8 @@ package com.dfsystems.gridwork.core.service
 import com.dfsystems.gridwork.core.persistence.CellRepository
 import com.dfsystems.gridwork.core.persistence.ColumnRepository
 import com.dfsystems.gridwork.core.persistence.StoredCell
+import com.dfsystems.gridwork.core.outbox.CellChangedPayload
+import com.dfsystems.gridwork.core.outbox.OutboxRepository
 import com.dfsystems.gridwork.core.realtime.CellsChangedEvent
 import com.dfsystems.gridwork.core.realtime.Outbound
 import com.dfsystems.gridwork.core.error.CellConflictException
@@ -44,6 +46,8 @@ class CellService(
     private val columns: ColumnRepository,
     private val access: AccessService,
     private val events: org.springframework.context.ApplicationEventPublisher,
+    private val outbox: OutboxRepository,
+    private val objectMapper: com.fasterxml.jackson.databind.ObjectMapper,
 ) {
 
     data class RequestedWrite(
@@ -60,6 +64,13 @@ class CellService(
         sheetId: SheetId,
         actorId: UserId,
         requested: List<RequestedWrite>,
+        /**
+         * How many automations deep this write already is. Zero for a human
+         * edit through the API. The worker passes the depth of the change that
+         * triggered it plus one, which is what lets AutomationRule stop a loop
+         * at three. See ADR 0009.
+         */
+        depth: Int = 0,
     ): List<AppliedCell> {
         access.requireWriteCells(sheetId, actorId)
 
@@ -124,7 +135,7 @@ class CellService(
 
             is BatchOutcome.Conflicted -> throw conflict(outcome.conflicts, current)
 
-            is BatchOutcome.Applicable -> return apply(sheetId, actorId, outcome.writes, current)
+            is BatchOutcome.Applicable -> return apply(sheetId, actorId, outcome.writes, current, depth)
         }
     }
 
@@ -133,6 +144,7 @@ class CellService(
         actorId: UserId,
         writes: List<CellWrite>,
         current: Map<CellAddress, StoredCell>,
+        depth: Int,
     ): List<AppliedCell> {
         val affected = cells.applyBatch(sheetId, writes, actorId)
 
@@ -177,6 +189,33 @@ class CellService(
                 )
             },
             changedBy = actorId,
+        )
+
+        // The outbox, written in this same transaction as the cell rows and
+        // the history rows. Either all three commit or none do, which is what
+        // makes it impossible to have a cell change with no event or an event
+        // for a change that rolled back. A relay publishes these to SQS
+        // afterwards. See ADR 0009.
+        outbox.append(
+            writes.mapIndexed { index, write ->
+                OutboxRepository.NewEvent(
+                    aggregateType = CellChangedPayload.AGGREGATE_TYPE,
+                    aggregateId = sheetId.value,
+                    eventType = CellChangedPayload.EVENT_TYPE,
+                    payload = objectMapper.writeValueAsString(
+                        CellChangedPayload(
+                            sheetId = sheetId.toString(),
+                            rowId = write.address.rowId.toString(),
+                            columnId = write.address.columnId.toString(),
+                            oldValue = current[write.address]?.value,
+                            newValue = write.value.asStored(),
+                            version = write.expectedVersion.next().value,
+                            changedBy = actorId.toString(),
+                            depth = depth,
+                        ),
+                    ),
+                )
+            },
         )
 
         // Raised, not published. A TransactionalEventListener holds it until
